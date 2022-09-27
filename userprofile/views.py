@@ -8,6 +8,8 @@ from django.http import HttpResponse
 from userprofile.forms import UserLoginForm, UserRegisterForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from .forms import ProfileForm
+from .models import Profile
 
 def user_login(request):
     if request.method == 'POST':
@@ -64,3 +66,26 @@ def user_delete(request,id):
             return HttpResponse('没有权限')
     else:
         return HttpResponse('只能post请求')
+
+
+def profile_edit(request,id):
+    user = User.objects.get(id=id)
+    profile = Profile.objects.get(user_id=id)
+    if request.method == 'POST':
+        if request.user != user:
+            return HttpResponse('你没有权限修改')
+        profile_form = ProfileForm(data=request.POST)
+        if profile_form.is_valid():
+            profile_cd = profile_form.cleaned_data
+            profile.phone = profile_cd['phone']
+            profile.bio = profile_cd['bio']
+            profile.save()
+            return redirect('userprofile:edit', id=id)
+        else:
+            return HttpResponse('注册表单有误')
+    elif request.method == 'GET':
+        profile_form = ProfileForm()
+        context = {'profile_form': profile_form, 'profile': profile}
+        return render(request, 'userprofile/edit.html', context)
+    else:
+        return HttpResponse('请使用GET或者POST')
