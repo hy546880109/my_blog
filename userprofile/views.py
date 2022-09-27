@@ -3,10 +3,11 @@ from django.shortcuts import render
 
 # Create your views here.
 from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponse
-from userprofile.forms import UserLoginForm
-
+from userprofile.forms import UserLoginForm, UserRegisterForm
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 
 def user_login(request):
     if request.method == 'POST':
@@ -27,3 +28,39 @@ def user_login(request):
         return render(request, 'userprofile/login.html', context)
     else:
         return HttpResponse('请使用post或者get')
+
+
+def user_logout(request):
+    logout(request)
+    return redirect('article:article_list')
+
+def user_register(request):
+    if request.method == 'POST':
+        user_register_form = UserRegisterForm(data=request.POST)
+        if user_register_form.is_valid():
+            new_user = user_register_form.save(commit=False)
+            new_user.set_password(user_register_form.cleaned_data['password'])
+            new_user.save()
+            login(request, new_user)
+            return redirect('article:article_list')
+        else:
+            return HttpResponse('注册表单输入有误')
+    elif request.method == 'GET':
+        user_register_form = UserRegisterForm()
+        context = {'form': user_register_form}
+        return render(request, 'userprofile/register.html', context)
+    else:
+        return HttpResponse('请使用GET或POST')
+
+@login_required(login_url='userprofile/login/')
+def user_delete(request,id):
+    if request.method == 'POST':
+        user = User.objects.get(id=id)
+        if request.user == user:
+            logout(request)
+            user.delete()
+            return redirect('article:article_list')
+        else:
+            return HttpResponse('没有权限')
+    else:
+        return HttpResponse('只能post请求')
