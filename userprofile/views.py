@@ -11,6 +11,7 @@ from django.contrib.auth.models import User
 from .forms import ProfileForm
 from .models import Profile
 
+
 def user_login(request):
     if request.method == 'POST':
         user_login_form = UserLoginForm(data=request.POST)
@@ -68,17 +69,24 @@ def user_delete(request,id):
         return HttpResponse('只能post请求')
 
 
+@login_required(login_url='/userprofile/login/')
 def profile_edit(request,id):
     user = User.objects.get(id=id)
-    profile = Profile.objects.get(user_id=id)
+    # profile = Profile.objects.get(user_id=id)
+    if Profile.objects.filter(user_id=id).exists():
+        profile = Profile.objects.get(user_id=id)
+    else:
+        profile = Profile.objects.create(user=user)
     if request.method == 'POST':
         if request.user != user:
             return HttpResponse('你没有权限修改')
-        profile_form = ProfileForm(data=request.POST)
+        profile_form = ProfileForm(request.POST, request.FILES)
         if profile_form.is_valid():
             profile_cd = profile_form.cleaned_data
             profile.phone = profile_cd['phone']
             profile.bio = profile_cd['bio']
+            if 'avatar' in request.FILES:
+                profile.avatar = profile_cd["avatar"]
             profile.save()
             return redirect('userprofile:edit', id=id)
         else:
